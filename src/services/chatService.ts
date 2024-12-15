@@ -47,32 +47,25 @@ export const joinChatRoom = async (roomId: string) => {
   }
 };
 
-export const getChatMessages = async (roomId: string) => {
-  try {
-    const messagesRef = collection(db, 'chatRooms', roomId, 'messages');
-    const q = query(messagesRef, orderBy('createdAt', 'asc'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-  } catch (error: any) {
-    console.error('Error getting messages:', error);
-    throw new Error('Failed to load messages');
-  }
-};
-
 export const subscribeToMessages = (roomId: string, callback: (messages: any[]) => void): Unsubscribe => {
   const messagesRef = collection(db, 'chatRooms', roomId, 'messages');
   const q = query(messagesRef, orderBy('createdAt', 'asc'));
   
-  return onSnapshot(q, (snapshot) => {
-    const messages = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    callback(messages);
+  // Create a single subscription
+  const unsubscribe = onSnapshot(q, {
+    next: (snapshot) => {
+      const messages = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      callback(messages);
+    },
+    error: (error) => {
+      console.error('Error subscribing to messages:', error);
+    }
   });
+
+  return unsubscribe;
 };
 
 export const sendMessage = async (roomId: string, userId: string, text: string) => {

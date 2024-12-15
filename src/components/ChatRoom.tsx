@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { sendMessage, subscribeToMessages } from '@/services/chatService';
 import { Button } from './ui/button';
@@ -17,12 +17,32 @@ const ChatRoom = ({ roomId, onBack }: ChatRoomProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = subscribeToMessages(roomId, (newMessages) => {
-      setMessages(newMessages);
-    });
+    let unsubscribe: (() => void) | undefined;
 
-    return () => unsubscribe();
-  }, [roomId]);
+    const setupMessageSubscription = () => {
+      try {
+        unsubscribe = subscribeToMessages(roomId, (newMessages) => {
+          setMessages(newMessages);
+        });
+      } catch (error) {
+        console.error('Error setting up message subscription:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load messages",
+          variant: "destructive",
+        });
+      }
+    };
+
+    setupMessageSubscription();
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [roomId, toast]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
