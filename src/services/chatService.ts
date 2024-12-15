@@ -8,7 +8,9 @@ import {
   orderBy,
   query,
   onSnapshot,
-  Unsubscribe
+  Unsubscribe,
+  QuerySnapshot,
+  DocumentData
 } from 'firebase/firestore';
 
 export const createChatRoom = async (name: string, createdBy: string) => {
@@ -50,28 +52,17 @@ export const subscribeToMessages = (roomId: string, callback: (messages: any[]) 
     const messagesRef = collection(db, 'chatRooms', roomId, 'messages');
     const q = query(messagesRef, orderBy('createdAt', 'asc'));
     
-    const unsubscribe = onSnapshot(
-      q,
-      {
-        next: (snapshot) => {
-          const messages = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          callback(messages);
-        },
-        error: (error) => {
-          console.error('Error in message subscription:', error);
-          throw new Error('Failed to subscribe to messages');
-        }
-      },
-      (error) => {
-        console.error('Subscription error:', error);
-        throw new Error('Failed to setup message subscription');
-      }
-    );
+    return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+      const messages = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      callback(messages);
+    }, (error) => {
+      console.error('Error in message subscription:', error);
+      throw new Error('Failed to subscribe to messages');
+    });
 
-    return unsubscribe;
   } catch (error: any) {
     console.error('Error in subscribeToMessages:', error);
     throw error;
