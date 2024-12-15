@@ -8,21 +8,25 @@ import {
   doc,
   getDoc,
   serverTimestamp,
-  orderBy
+  orderBy,
+  onSnapshot
 } from 'firebase/firestore';
 
 export const createChatRoom = async (name: string, createdBy: string) => {
   try {
-    const chatRoomRef = await addDoc(collection(db, 'chatRooms'), {
+    const chatRoomData = {
       name,
       createdBy,
       createdAt: serverTimestamp(),
       lastMessage: null,
       lastMessageTime: null
-    });
+    };
+
+    const chatRoomRef = await addDoc(collection(db, 'chatRooms'), chatRoomData);
     return chatRoomRef.id;
   } catch (error: any) {
-    throw new Error(error.message);
+    console.error('Error creating chat room:', error);
+    throw new Error('Failed to create chat room');
   }
 };
 
@@ -37,7 +41,8 @@ export const joinChatRoom = async (roomId: string) => {
     
     return { id: roomSnap.id, ...roomSnap.data() };
   } catch (error: any) {
-    throw new Error(error.message);
+    console.error('Error joining chat room:', error);
+    throw new Error('Failed to join chat room');
   }
 };
 
@@ -51,6 +56,21 @@ export const getChatMessages = async (roomId: string) => {
       ...doc.data()
     }));
   } catch (error: any) {
-    throw new Error(error.message);
+    console.error('Error getting messages:', error);
+    throw new Error('Failed to load messages');
+  }
+};
+
+export const sendMessage = async (roomId: string, userId: string, text: string) => {
+  try {
+    const messagesRef = collection(db, 'chatRooms', roomId, 'messages');
+    await addDoc(messagesRef, {
+      text,
+      userId,
+      createdAt: serverTimestamp()
+    });
+  } catch (error: any) {
+    console.error('Error sending message:', error);
+    throw new Error('Failed to send message');
   }
 };

@@ -23,6 +23,7 @@ const Index = () => {
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,15 +36,25 @@ const Index = () => {
       return;
     }
 
+    if (!newRoomName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a room name",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsCreating(true);
-      const roomId = await createChatRoom(newRoomName, currentUser.uid);
+      const roomId = await createChatRoom(newRoomName.trim(), currentUser.uid);
+      setNewRoomName('');
+      setIsDialogOpen(false);
+      setCurrentRoomId(roomId);
       toast({
         title: "Success",
-        description: `Chat room created! Room ID: ${roomId}`,
+        description: "Chat room created successfully!",
       });
-      setNewRoomName('');
-      setCurrentRoomId(roomId);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -66,15 +77,25 @@ const Index = () => {
       return;
     }
 
+    if (!joinRoomId.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a room ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsJoining(true);
-      await joinChatRoom(joinRoomId);
+      await joinChatRoom(joinRoomId.trim());
+      setJoinRoomId('');
+      setIsDialogOpen(false);
+      setCurrentRoomId(joinRoomId.trim());
       toast({
         title: "Success",
         description: "Successfully joined the chat room!",
       });
-      setJoinRoomId('');
-      setCurrentRoomId(joinRoomId);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -114,14 +135,14 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white p-8">
       <div className="max-w-md mx-auto space-y-8">
         <div className="flex justify-between items-center">
-          <h1 className="text-4xl font-bold text-center mb-8">Welcome to Chat App</h1>
+          <h1 className="text-4xl font-bold">Welcome to Chat App</h1>
           <Button onClick={handleSignOut} variant="destructive">
             Sign Out
           </Button>
         </div>
         
         <div className="space-y-4">
-          <Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="w-full bg-blue-600 hover:bg-blue-700">
                 Create New Chat
@@ -147,7 +168,7 @@ const Index = () => {
             </DialogContent>
           </Dialog>
 
-          <Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="w-full bg-green-600 hover:bg-green-700">
                 Join Chat

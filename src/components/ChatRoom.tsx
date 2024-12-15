@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getChatMessages } from '@/services/chatService';
+import { getChatMessages, sendMessage } from '@/services/chatService';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { useToast } from './ui/use-toast';
 
 interface ChatRoomProps {
   roomId: string;
@@ -10,20 +12,45 @@ interface ChatRoomProps {
 
 const ChatRoom = ({ roomId, onBack }: ChatRoomProps) => {
   const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
   const { currentUser } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     const loadMessages = async () => {
       try {
         const chatMessages = await getChatMessages(roomId);
         setMessages(chatMessages);
-      } catch (error) {
-        console.error('Error loading messages:', error);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
       }
     };
 
     loadMessages();
-  }, [roomId]);
+  }, [roomId, toast]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser || !newMessage.trim()) return;
+
+    try {
+      await sendMessage(roomId, currentUser.uid, newMessage.trim());
+      setNewMessage('');
+      // Reload messages after sending
+      const updatedMessages = await getChatMessages(roomId);
+      setMessages(updatedMessages);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -31,28 +58,41 @@ const ChatRoom = ({ roomId, onBack }: ChatRoomProps) => {
         <h2 className="text-xl font-bold">Chat Room</h2>
         <Button onClick={onBack} variant="outline">Back</Button>
       </div>
-      <div className="flex-1 overflow-y-auto p-4">
+      
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`mb-4 ${
-              message.userId === currentUser?.uid
-                ? 'text-right'
-                : 'text-left'
+            className={`flex ${
+              message.userId === currentUser?.uid ? 'justify-end' : 'justify-start'
             }`}
           >
             <div
-              className={`inline-block p-2 rounded-lg ${
+              className={`max-w-[70%] p-3 rounded-lg ${
                 message.userId === currentUser?.uid
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-200'
               }`}
             >
-              {message.text}
+              <p>{message.text}</p>
+              <span className="text-xs opacity-70">
+                {message.createdAt?.toDate().toLocaleTimeString()}
+              </span>
             </div>
           </div>
         ))}
       </div>
+
+      <form onSubmit={handleSendMessage} className="p-4 border-t flex gap-2">
+        <Input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Type a message..."
+          className="flex-1"
+        />
+        <Button type="submit">Send</Button>
+      </form>
     </div>
   );
 };
