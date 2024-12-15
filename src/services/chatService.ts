@@ -9,7 +9,8 @@ import {
   getDoc,
   serverTimestamp,
   orderBy,
-  onSnapshot
+  onSnapshot,
+  Unsubscribe
 } from 'firebase/firestore';
 
 export const createChatRoom = async (name: string, createdBy: string) => {
@@ -59,6 +60,19 @@ export const getChatMessages = async (roomId: string) => {
     console.error('Error getting messages:', error);
     throw new Error('Failed to load messages');
   }
+};
+
+export const subscribeToMessages = (roomId: string, callback: (messages: any[]) => void): Unsubscribe => {
+  const messagesRef = collection(db, 'chatRooms', roomId, 'messages');
+  const q = query(messagesRef, orderBy('createdAt', 'asc'));
+  
+  return onSnapshot(q, (snapshot) => {
+    const messages = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    callback(messages);
+  });
 };
 
 export const sendMessage = async (roomId: string, userId: string, text: string) => {

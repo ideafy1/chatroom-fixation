@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getChatMessages, sendMessage } from '@/services/chatService';
+import { sendMessage, subscribeToMessages } from '@/services/chatService';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { useToast } from './ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatRoomProps {
   roomId: string;
@@ -17,21 +17,12 @@ const ChatRoom = ({ roomId, onBack }: ChatRoomProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const loadMessages = async () => {
-      try {
-        const chatMessages = await getChatMessages(roomId);
-        setMessages(chatMessages);
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    };
+    const unsubscribe = subscribeToMessages(roomId, (newMessages) => {
+      setMessages(newMessages);
+    });
 
-    loadMessages();
-  }, [roomId, toast]);
+    return () => unsubscribe();
+  }, [roomId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,9 +31,6 @@ const ChatRoom = ({ roomId, onBack }: ChatRoomProps) => {
     try {
       await sendMessage(roomId, currentUser.uid, newMessage.trim());
       setNewMessage('');
-      // Reload messages after sending
-      const updatedMessages = await getChatMessages(roomId);
-      setMessages(updatedMessages);
     } catch (error: any) {
       toast({
         title: "Error",
