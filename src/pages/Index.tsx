@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createChatRoom, joinChatRoom } from '@/services/chatService';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/use-toast';
+import AuthForm from '@/components/AuthForm';
+import ChatRoom from '@/components/ChatRoom';
 import {
   Dialog,
   DialogContent,
@@ -11,12 +13,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { signOut } from '@/services/authService';
 
 const Index = () => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const [newRoomName, setNewRoomName] = useState('');
   const [joinRoomId, setJoinRoomId] = useState('');
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -39,11 +43,11 @@ const Index = () => {
         description: `Chat room created! Room ID: ${roomId}`,
       });
       setNewRoomName('');
-      // Here you would typically navigate to the chat room
-    } catch (error) {
+      setCurrentRoomId(roomId);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to create chat room",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -64,17 +68,17 @@ const Index = () => {
 
     try {
       setIsJoining(true);
-      const room = await joinChatRoom(joinRoomId);
+      await joinChatRoom(joinRoomId);
       toast({
         title: "Success",
         description: "Successfully joined the chat room!",
       });
       setJoinRoomId('');
-      // Here you would typically navigate to the chat room
-    } catch (error) {
+      setCurrentRoomId(joinRoomId);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to join chat room",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -82,10 +86,39 @@ const Index = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Success",
+        description: "Successfully logged out!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!currentUser) {
+    return <AuthForm />;
+  }
+
+  if (currentRoomId) {
+    return <ChatRoom roomId={currentRoomId} onBack={() => setCurrentRoomId(null)} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white p-8">
       <div className="max-w-md mx-auto space-y-8">
-        <h1 className="text-4xl font-bold text-center mb-8">Welcome to Chat App</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-4xl font-bold text-center mb-8">Welcome to Chat App</h1>
+          <Button onClick={handleSignOut} variant="destructive">
+            Sign Out
+          </Button>
+        </div>
         
         <div className="space-y-4">
           <Dialog>
