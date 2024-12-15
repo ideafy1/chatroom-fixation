@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { sendMessage, subscribeToMessages } from '@/services/chatService';
 import { Button } from './ui/button';
@@ -13,30 +13,33 @@ interface ChatRoomProps {
 const ChatRoom = ({ roomId, onBack }: ChatRoomProps) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const { currentUser } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
 
-    const setupMessageSubscription = () => {
+    const setupMessageSubscription = async () => {
       try {
+        setIsLoading(true);
         unsubscribe = subscribeToMessages(roomId, (newMessages) => {
           setMessages(newMessages);
+          setIsLoading(false);
         });
       } catch (error) {
         console.error('Error setting up message subscription:', error);
         toast({
           title: "Error",
-          description: "Failed to load messages",
+          description: "Failed to load messages. Please try again.",
           variant: "destructive",
         });
+        setIsLoading(false);
       }
     };
 
     setupMessageSubscription();
 
-    // Cleanup subscription on unmount
     return () => {
       if (unsubscribe) {
         unsubscribe();
@@ -54,11 +57,19 @@ const ChatRoom = ({ roomId, onBack }: ChatRoomProps) => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to send message. Please try again.",
         variant: "destructive",
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center">
+        <p>Loading messages...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
